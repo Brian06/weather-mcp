@@ -2,6 +2,18 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from 'zod';
 
+interface WeatherApiResponse {
+  current?: {
+    temperature_2m?: number;
+    precipitation?: number;
+    rain?: number;
+    is_day?: number;
+  };
+  hourly?: {
+    temperature_2m?: number[];
+  };
+}
+
 /**
  * Fetch coordinates for a city using the geocoding API
  */
@@ -22,7 +34,7 @@ async function getCoordinates(city: string): Promise<{ latitude: number; longitu
 /**
  * Fetch weather data for given coordinates
  */
-async function getWeatherData(latitude: number, longitude: number) {
+async function getWeatherData(latitude: number, longitude: number): Promise<WeatherApiResponse> {
   const weatherResponse = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&current=temperature_2m,precipitation,is_day,rain&forecast_days=1`
   );
@@ -32,7 +44,7 @@ async function getWeatherData(latitude: number, longitude: number) {
 /**
  * Format weather data into structured response
  */
-function formatWeatherResponse(weatherData: any) {
+function formatWeatherResponse(weatherData: WeatherApiResponse) {
   return {
     weather: {
       temperature: weatherData.current?.temperature_2m ?? 0,
