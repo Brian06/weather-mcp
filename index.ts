@@ -3,6 +3,47 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from 'zod';
 
 /**
+ * Fetch coordinates for a city using the geocoding API
+ */
+async function getCoordinates(city: string): Promise<{ latitude: number; longitude: number } | null> {
+  const geocodingResponse = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`
+  );
+  const geocodingData = await geocodingResponse.json();
+
+  if (!geocodingData.results || geocodingData.results.length === 0) {
+    return null;
+  }
+
+  const { latitude, longitude } = geocodingData.results[0];
+  return { latitude, longitude };
+}
+
+/**
+ * Fetch weather data for given coordinates
+ */
+async function getWeatherData(latitude: number, longitude: number) {
+  const weatherResponse = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&current=temperature_2m,precipitation,is_day,rain&forecast_days=1`
+  );
+  return await weatherResponse.json();
+}
+
+/**
+ * Format weather data into structured response
+ */
+function formatWeatherResponse(weatherData: any) {
+  return {
+    weather: {
+      temperature: weatherData.current?.temperature_2m ?? 0,
+      precipitation: weatherData.current?.precipitation ?? 0,
+      rain: weatherData.current?.rain ?? 0,
+      is_day: weatherData.current?.is_day ?? 0
+    }
+  };
+}
+
+/**
  * Create a new MCP server
  */
 const server = new McpServer({
@@ -31,28 +72,21 @@ server.registerTool(
     },
   },
   async ({ city }) => {
-    const geocodingResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`); 
-    const geocodingData = await geocodingResponse.json();
-
-    if (geocodingData.results.length === 0) {
+    // Get coordinates for the city
+    const coordinates = await getCoordinates(city);
+    
+    if (!coordinates) {
       return {
         content: [{ type: 'text', text: `No location found for city: ${city}` }],
         structuredContent: { error: `No location found for city: ${city}` }
       };
     }
 
-    const {latitude, longitude} = geocodingData.results[0];
-    const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&current=temperature_2m,precipitation,is_day,rain&forecast_days=1`);
-    const weatherData = await weatherResponse.json();
+    // Fetch weather data using coordinates
+    const weatherData = await getWeatherData(coordinates.latitude, coordinates.longitude);
     
-    const structuredResponse = {
-      weather: {
-        temperature: weatherData.current?.temperature_2m ?? 0,
-        precipitation: weatherData.current?.precipitation ?? 0,
-        rain: weatherData.current?.rain ?? 0,
-        is_day: weatherData.current?.is_day ?? 0
-      }
-    };
+    // Format the structured response
+    const structuredResponse = formatWeatherResponse(weatherData);
     
     return {
       content: [{ type: 'text', text: JSON.stringify(weatherData, null, 2) }],
