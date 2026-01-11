@@ -46,9 +46,10 @@ Run `npx -y @modelcontextprotocol/inspector npx -y tsx index.ts` to start the MC
 
 ## Cursor
 
-Go to the Cursor settings 
-Go to the "Tools & MCP" section
-Click "Add Custom MCP" button and paste the following in the mcp.json file related to your MCP server:
+- Go to the Cursor settings 
+- Go to the "Tools & MCP" section
+- Click "Add Custom MCP" button
+- Paste the following in the mcp.json file related to your MCP server:
 
 ```json
 {
